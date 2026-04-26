@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Dumbbell, Briefcase, Wallet, Compass, Calendar, Check, Plus, Trash2, AlertCircle, Edit2, X, Mountain, Code2, BookOpen, Heart, Sunrise, Flag } from "lucide-react";
+import { Dumbbell, Briefcase, Wallet, Compass, Calendar, Check, Plus, Trash2, AlertCircle, Edit2, X, Mountain, Code2, BookOpen, Heart, Sunrise, Flag, Download } from "lucide-react";
 
 // ============================================================
 // THE PLAN — locked April 25, 2026 / cycle ends ~July 25, 2026
@@ -1705,6 +1705,24 @@ function CompassTab({ customNotes, saveNotes, foundationVerse, saveFoundationVer
   const [editingVerse, setEditingVerse] = useState(false);
   const [verseDraft, setVerseDraft] = useState(foundationVerse);
 
+  const handleExport = async () => {
+    const keys = ["completedTasks", "customTasks", "weights", "notes", "foundationVerse", "presenceDays", "carryingNotes", "cycleDecisions"];
+    const data = { _exported: new Date().toISOString() };
+    for (const key of keys) {
+      const r = await window.storage.get(key);
+      if (r) {
+        try { data[key] = JSON.parse(r.value); } catch { data[key] = r.value; }
+      }
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `do-dashboard-${new Date().toISOString().split("T")[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   useEffect(() => { setVerseDraft(foundationVerse); }, [foundationVerse]);
 
   return (
@@ -1954,6 +1972,38 @@ function CompassTab({ customNotes, saveNotes, foundationVerse, saveFoundationVer
         <div style={{ fontSize: "10px", color: PALETTE.inkFaint, fontFamily: "monospace", letterSpacing: "1.5px", marginTop: "8px", fontWeight: 600 }}>
           AUTOSAVES · PERSISTS BETWEEN SESSIONS
         </div>
+      </div>
+
+      <div style={{ marginTop: "40px", paddingTop: "24px", borderTop: `1px solid ${PALETTE.borderSoft}`, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+        <div>
+          <div style={{ fontSize: "10px", letterSpacing: "3px", color: PALETTE.inkMuted, textTransform: "uppercase", fontFamily: "monospace", fontWeight: 700, marginBottom: "4px" }}>
+            Backup
+          </div>
+          <div style={{ fontSize: "12px", color: PALETTE.inkMuted, fontStyle: "italic", lineHeight: 1.5 }}>
+            Download all cycle data as JSON. Manual insurance before a trip or device swap.
+          </div>
+        </div>
+        <button
+          onClick={handleExport}
+          style={{
+            display: "flex", alignItems: "center", gap: "7px",
+            background: PALETTE.card,
+            border: `1px solid ${PALETTE.border}`,
+            borderRadius: "6px",
+            padding: "10px 16px",
+            color: PALETTE.inkSoft,
+            fontFamily: "monospace",
+            fontSize: "11px",
+            letterSpacing: "1.5px",
+            fontWeight: 700,
+            cursor: "pointer",
+            textTransform: "uppercase",
+            flexShrink: 0,
+          }}
+        >
+          <Download size={13} />
+          Export JSON
+        </button>
       </div>
     </div>
   );
