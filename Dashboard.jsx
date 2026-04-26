@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Dumbbell, Briefcase, Wallet, Compass, Calendar, Check, Plus, Trash2, AlertCircle, Edit2, X, Mountain, Code2, BookOpen, Heart, Sunrise } from "lucide-react";
+import { Dumbbell, Briefcase, Wallet, Compass, Calendar, Check, Plus, Trash2, AlertCircle, Edit2, X, Mountain, Code2, BookOpen, Heart, Sunrise, Flag } from "lucide-react";
 
 // ============================================================
 // THE PLAN — locked April 25, 2026 / cycle ends ~July 25, 2026
@@ -189,6 +189,7 @@ export default function Dashboard() {
   const [foundationVerse, setFoundationVerse] = useState("");
   const [presenceDays, setPresenceDays] = useState({});
   const [carryingNotes, setCarryingNotes] = useState("");
+  const [cycleDecisions, setCycleDecisions] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [viewWeek, setViewWeek] = useState(getCurrentWeek() || 1);
 
@@ -223,6 +224,10 @@ export default function Dashboard() {
       try {
         const cn = await window.storage.get("carryingNotes");
         if (cn) setCarryingNotes(cn.value);
+      } catch (e) { }
+      try {
+        const cd = await window.storage.get("cycleDecisions");
+        if (cd) setCycleDecisions(JSON.parse(cd.value));
       } catch (e) { }
       setLoaded(true);
     })();
@@ -261,6 +266,11 @@ export default function Dashboard() {
   const saveCarryingNotes = async (val) => {
     setCarryingNotes(val);
     try { await window.storage.set("carryingNotes", val); } catch (e) { }
+  };
+
+  const saveCycleDecisions = async (next) => {
+    setCycleDecisions(next);
+    try { await window.storage.set("cycleDecisions", JSON.stringify(next)); } catch (e) { }
   };
 
   const togglePresenceDay = (dateStr) => {
@@ -408,6 +418,8 @@ export default function Dashboard() {
                 togglePresenceDay={togglePresenceDay}
                 carryingNotes={carryingNotes}
                 saveCarryingNotes={saveCarryingNotes}
+                cycleDecisions={cycleDecisions}
+                saveCycleDecisions={saveCycleDecisions}
               />
             )}
           </>
@@ -1498,10 +1510,198 @@ function BudgetWatch() {
 }
 
 // ============================================================
+// CYCLE DECISIONS
+// ============================================================
+
+function CycleDecisionsSection({ cycleDecisions, saveCycleDecisions }) {
+  const [adding, setAdding] = useState(false);
+  const [newText, setNewText] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [editText, setEditText] = useState("");
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (adding && inputRef.current) inputRef.current.focus();
+  }, [adding]);
+
+  const handleAdd = () => {
+    if (newText.trim()) {
+      saveCycleDecisions([...cycleDecisions, { id: Date.now().toString(), text: newText.trim() }]);
+      setNewText("");
+    }
+    setAdding(false);
+  };
+
+  const handleSaveEdit = (id) => {
+    if (editText.trim()) {
+      saveCycleDecisions(cycleDecisions.map(d => d.id === id ? { ...d, text: editText.trim() } : d));
+    }
+    setEditingId(null);
+  };
+
+  const handleDelete = (id) => {
+    saveCycleDecisions(cycleDecisions.filter(d => d.id !== id));
+  };
+
+  return (
+    <div>
+      <SectionLabel text="Cycle Decisions" />
+      <div style={{
+        background: PALETTE.card,
+        border: `1px solid ${PALETTE.border}`,
+        borderRadius: "8px",
+        padding: "20px",
+        marginBottom: "12px",
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <Flag size={13} color={PALETTE.trail} />
+            <div style={{ fontSize: "10px", letterSpacing: "3px", color: PALETTE.trail, textTransform: "uppercase", fontFamily: "monospace", fontWeight: 700 }}>
+              Locked for This Cycle
+            </div>
+          </div>
+          {!adding && (
+            <button
+              onClick={() => setAdding(true)}
+              style={{
+                background: "none", border: "none", color: PALETTE.inkMuted,
+                cursor: "pointer", display: "flex", alignItems: "center", gap: "4px",
+                fontSize: "11px", fontFamily: "monospace", letterSpacing: "1px",
+                padding: "4px 8px", borderRadius: "4px",
+              }}
+            >
+              <Plus size={12} /> ADD
+            </button>
+          )}
+        </div>
+
+        {cycleDecisions.length === 0 && !adding && (
+          <div style={{ fontSize: "13px", color: PALETTE.inkFaint, fontStyle: "italic", padding: "8px 0" }}>
+            No decisions yet — tap ADD to capture a commitment for this cycle.
+          </div>
+        )}
+
+        {cycleDecisions.map((decision, i) => {
+          const isEditing = editingId === decision.id;
+          const isLast = i === cycleDecisions.length - 1;
+
+          if (isEditing) {
+            return (
+              <div key={decision.id} style={{ padding: "10px 0", borderBottom: !isLast ? `1px solid ${PALETTE.borderSoft}` : "none" }}>
+                <input
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSaveEdit(decision.id);
+                    if (e.key === "Escape") setEditingId(null);
+                  }}
+                  autoFocus
+                  style={{
+                    width: "100%",
+                    border: `1px solid ${PALETTE.trail}`,
+                    borderRadius: "4px",
+                    padding: "8px 10px",
+                    fontFamily: "inherit",
+                    fontSize: "14px",
+                    outline: "none",
+                    color: PALETTE.ink,
+                    background: PALETTE.bg,
+                    boxSizing: "border-box",
+                  }}
+                />
+                <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+                  <button onClick={() => handleSaveEdit(decision.id)} style={miniBtn(PALETTE.trail, PALETTE.card)}>Save</button>
+                  <button onClick={() => setEditingId(null)} style={miniBtn(PALETTE.card, PALETTE.inkMuted, true)}>Cancel</button>
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div
+              key={decision.id}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: "10px",
+                padding: "10px 0",
+                borderBottom: !isLast ? `1px solid ${PALETTE.borderSoft}` : "none",
+              }}
+            >
+              <div style={{
+                flex: 1,
+                fontSize: "14px",
+                color: PALETTE.ink,
+                lineHeight: 1.5,
+                cursor: "pointer",
+              }}
+                onClick={() => { setEditingId(decision.id); setEditText(decision.text); }}
+              >
+                {decision.text}
+              </div>
+              <div style={{ display: "flex", gap: "2px", flexShrink: 0 }}>
+                <button
+                  onClick={() => { setEditingId(decision.id); setEditText(decision.text); }}
+                  style={{ background: "none", border: "none", color: PALETTE.inkFaint, cursor: "pointer", padding: "4px", display: "flex" }}
+                  aria-label="Edit"
+                >
+                  <Edit2 size={13} />
+                </button>
+                <button
+                  onClick={() => handleDelete(decision.id)}
+                  style={{ background: "none", border: "none", color: PALETTE.inkFaint, cursor: "pointer", padding: "4px", display: "flex" }}
+                  aria-label="Delete"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            </div>
+          );
+        })}
+
+        {adding && (
+          <div style={{ paddingTop: cycleDecisions.length > 0 ? "12px" : "0", borderTop: cycleDecisions.length > 0 ? `1px solid ${PALETTE.borderSoft}` : "none" }}>
+            <input
+              ref={inputRef}
+              value={newText}
+              onChange={(e) => setNewText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAdd();
+                if (e.key === "Escape") { setAdding(false); setNewText(""); }
+              }}
+              placeholder="e.g. Hinge: account kept, app deleted for the cycle"
+              style={{
+                width: "100%",
+                border: `1px solid ${PALETTE.trail}`,
+                borderRadius: "4px",
+                padding: "10px 12px",
+                fontFamily: "inherit",
+                fontSize: "14px",
+                outline: "none",
+                color: PALETTE.ink,
+                background: PALETTE.bg,
+                boxSizing: "border-box",
+              }}
+            />
+            <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+              <button onClick={handleAdd} style={miniBtn(PALETTE.trail, PALETTE.card)}>Add</button>
+              <button onClick={() => { setAdding(false); setNewText(""); }} style={miniBtn(PALETTE.card, PALETTE.inkMuted, true)}>Cancel</button>
+            </div>
+          </div>
+        )}
+      </div>
+      <div style={{ fontSize: "12px", color: PALETTE.inkMuted, fontStyle: "italic", marginBottom: "32px", paddingLeft: "4px", lineHeight: 1.6 }}>
+        Commitments from when I was thinking clearly. Re-read when tempted otherwise.
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
 // COMPASS
 // ============================================================
 
-function CompassTab({ customNotes, saveNotes, foundationVerse, saveFoundationVerse, presenceDays, togglePresenceDay, carryingNotes, saveCarryingNotes }) {
+function CompassTab({ customNotes, saveNotes, foundationVerse, saveFoundationVerse, presenceDays, togglePresenceDay, carryingNotes, saveCarryingNotes, cycleDecisions, saveCycleDecisions }) {
   const [editingVerse, setEditingVerse] = useState(false);
   const [verseDraft, setVerseDraft] = useState(foundationVerse);
 
@@ -1623,6 +1823,11 @@ function CompassTab({ customNotes, saveNotes, foundationVerse, saveFoundationVer
           BECOMING · NOT OPTIMIZING · NOT ESCAPING
         </div>
       </div>
+
+      {/* ============================================================ */}
+      {/* CYCLE DECISIONS — commitments locked at cycle start            */}
+      {/* ============================================================ */}
+      <CycleDecisionsSection cycleDecisions={cycleDecisions} saveCycleDecisions={saveCycleDecisions} />
 
       {/* ============================================================ */}
       {/* ANCHORS — Sunday + Monday rhythms                              */}
