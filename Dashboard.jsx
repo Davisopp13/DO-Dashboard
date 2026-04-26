@@ -1704,26 +1704,43 @@ function CycleDecisionsSection({ cycleDecisions, saveCycleDecisions }) {
 function CompassTab({ customNotes, saveNotes, foundationVerse, saveFoundationVerse, presenceDays, togglePresenceDay, carryingNotes, saveCarryingNotes, cycleDecisions, saveCycleDecisions }) {
   const [editingVerse, setEditingVerse] = useState(false);
   const [verseDraft, setVerseDraft] = useState(foundationVerse);
+  const [storageInfo, setStorageInfo] = useState(null);
+
+  useEffect(() => { setVerseDraft(foundationVerse); }, [foundationVerse]);
+
+  useEffect(() => {
+    const EXPORT_KEYS = ["completedTasks", "customTasks", "weights", "notes", "foundationVerse", "presenceDays", "carryingNotes", "cycleDecisions"];
+    (async () => {
+      let count = 0;
+      let totalBytes = 0;
+      for (const key of EXPORT_KEYS) {
+        const r = await window.storage.get(key);
+        if (r?.value) { count++; totalBytes += r.value.length; }
+      }
+      setStorageInfo({ count, kb: (totalBytes / 1024).toFixed(1) });
+    })();
+  }, []);
 
   const handleExport = async () => {
-    const keys = ["completedTasks", "customTasks", "weights", "notes", "foundationVerse", "presenceDays", "carryingNotes", "cycleDecisions"];
-    const data = { _exported: new Date().toISOString() };
-    for (const key of keys) {
+    const EXPORT_KEYS = ["completedTasks", "customTasks", "weights", "notes", "foundationVerse", "presenceDays", "carryingNotes", "cycleDecisions"];
+    const data = {};
+    for (const key of EXPORT_KEYS) {
       const r = await window.storage.get(key);
-      if (r) {
+      if (r?.value) {
         try { data[key] = JSON.parse(r.value); } catch { data[key] = r.value; }
+      } else {
+        data[key] = null;
       }
     }
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const payload = { exportedAt: new Date().toISOString(), version: 1, data };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `do-dashboard-${new Date().toISOString().split("T")[0]}.json`;
+    a.download = `do-dashboard-export-${new Date().toISOString().split("T")[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
-
-  useEffect(() => { setVerseDraft(foundationVerse); }, [foundationVerse]);
 
   return (
     <div>
@@ -1982,6 +1999,11 @@ function CompassTab({ customNotes, saveNotes, foundationVerse, saveFoundationVer
           <div style={{ fontSize: "12px", color: PALETTE.inkMuted, fontStyle: "italic", lineHeight: 1.5 }}>
             Download all cycle data as JSON. Manual insurance before a trip or device swap.
           </div>
+          {storageInfo && (
+            <div style={{ fontSize: "11px", color: PALETTE.inkFaint, fontFamily: "monospace", marginTop: "5px", letterSpacing: "0.5px" }}>
+              {storageInfo.count} keys · ~{storageInfo.kb} KB
+            </div>
+          )}
         </div>
         <button
           onClick={handleExport}
