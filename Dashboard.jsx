@@ -473,13 +473,13 @@ function Header({ currentWeek }) {
     }}>
       <MountainBackdrop height={140} opacity={1} />
       <div style={{ maxWidth: "1100px", margin: "0 auto", position: "relative", zIndex: 1 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: "clamp(18px, 3vw, 28px)", marginBottom: "10px" }}>
           <img
             src="/icon-192.png"
             alt="DO"
             style={{
-              width: "clamp(40px, 8vw, 56px)",
-              height: "clamp(40px, 8vw, 56px)",
+              width: "clamp(22px, 4vw, 30px)",
+              height: "clamp(22px, 4vw, 30px)",
               objectFit: "contain",
               flexShrink: 0,
             }}
