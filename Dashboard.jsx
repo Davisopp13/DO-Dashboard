@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Dumbbell, Briefcase, Wallet, Compass, Calendar, Check, Plus, Trash2, AlertCircle, Edit2, X, Mountain, Code2, BookOpen, Heart, Sunrise, Flag, Download } from "lucide-react";
+import { Dumbbell, Briefcase, Wallet, Compass, Calendar, Check, Plus, Trash2, AlertCircle, Edit2, X, Code2, BookOpen, Heart, Sunrise, Flag, Download, FileSpreadsheet, ExternalLink } from "lucide-react";
 
 // ============================================================
 // THE PLAN — locked April 25, 2026 / cycle ends ~July 25, 2026
@@ -105,11 +105,22 @@ const DEFAULT_TASKS = {
   },
 };
 
+const RESOURCES = [
+  {
+    id: "budget-plan",
+    title: "Budget Plan Spreadsheet",
+    description: "Full monthly cash flow, 5-year glide path, this-week actions",
+    icon: FileSpreadsheet,
+    storageKey: "resourceUrl_budgetPlan",
+  },
+];
+
 const BUDGET_TRIPWIRES = [
   { date: "2026-04-30", title: "Five Lakes Law Group — FINAL PAYMENT", detail: "$244/mo recovered starting May", urgent: true },
   { date: "2026-05-01", title: "Auto-transfer kicks in", detail: "$200 → Way2Save on each Hapag payday", urgent: false },
-  { date: "2026-06-15", title: "Call SoFi about repayment term", detail: "Highest-leverage move before forbearance ends", urgent: true },
-  { date: "2026-07-01", title: "Forbearance window narrowing", detail: "SoFi payment will jump from $725 → ~$1,250", urgent: true },
+  { date: "2026-05-02", title: "Send BSD transfer email", detail: "In writing, specific ask. Cost: nothing. Worst case: no response.", urgent: true },
+  { date: "2026-06-15", title: "Call SoFi about repayment term", detail: "Worth asking. Bridge plan absorbs the tightening either way.", urgent: false },
+  { date: "2026-07-01", title: "Forbearance window narrowing", detail: "SoFi jumps from $725 → ~$1,250. Stable margin still positive at $371/mo.", urgent: false },
 ];
 
 // ============================================================
@@ -190,6 +201,7 @@ export default function Dashboard() {
   const [presenceDays, setPresenceDays] = useState({});
   const [carryingNotes, setCarryingNotes] = useState("");
   const [cycleDecisions, setCycleDecisions] = useState([]);
+  const [resourceUrls, setResourceUrls] = useState({});
   const [loaded, setLoaded] = useState(false);
   const [viewWeek, setViewWeek] = useState(getCurrentWeek() || 1);
 
@@ -228,6 +240,14 @@ export default function Dashboard() {
       try {
         const cd = await window.storage.get("cycleDecisions");
         if (cd) setCycleDecisions(JSON.parse(cd.value));
+      } catch (e) { }
+      try {
+        const urls = {};
+        for (const r of RESOURCES) {
+          const stored = await window.storage.get(r.storageKey);
+          if (stored) urls[r.storageKey] = stored.value;
+        }
+        if (Object.keys(urls).length) setResourceUrls(urls);
       } catch (e) { }
       setLoaded(true);
     })();
@@ -271,6 +291,11 @@ export default function Dashboard() {
   const saveCycleDecisions = async (next) => {
     setCycleDecisions(next);
     try { await window.storage.set("cycleDecisions", JSON.stringify(next)); } catch (e) { }
+  };
+
+  const saveResourceUrl = async (storageKey, url) => {
+    setResourceUrls(prev => ({ ...prev, [storageKey]: url }));
+    try { await window.storage.set(storageKey, url); } catch (e) { }
   };
 
   const togglePresenceDay = (dateStr) => {
@@ -406,7 +431,7 @@ export default function Dashboard() {
               />
             )}
             {activeTab === "budget" && (
-              <BudgetTrack completedTasks={completedTasks} toggleTask={toggleTask} />
+              <BudgetTrack completedTasks={completedTasks} toggleTask={toggleTask} resourceUrls={resourceUrls} saveResourceUrl={saveResourceUrl} />
             )}
             {activeTab === "compass" && (
               <CompassTab
@@ -448,26 +473,36 @@ function Header({ currentWeek }) {
     }}>
       <MountainBackdrop height={140} opacity={1} />
       <div style={{ maxWidth: "1100px", margin: "0 auto", position: "relative", zIndex: 1 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px" }}>
-          <Mountain size={18} color={PALETTE.trail} strokeWidth={2.2} />
-          <div style={{
-            fontSize: "11px", letterSpacing: "3px", color: PALETTE.trail,
-            textTransform: "uppercase", fontFamily: "monospace", fontWeight: 600,
+        <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "10px" }}>
+          <img
+            src="/icon-192.png"
+            alt="DO Dashboard"
+            style={{
+              width: "44px",
+              height: "44px",
+              objectFit: "contain",
+              flexShrink: 0,
+            }}
+          />
+          <h1 style={{
+            fontSize: "clamp(28px, 5.5vw, 44px)",
+            fontWeight: 600,
+            margin: 0,
+            lineHeight: 1.05,
+            letterSpacing: "-0.5px",
+            color: PALETTE.trailDeep,
+            fontFamily: "'Iowan Old Style', 'Palatino', Georgia, serif",
           }}>
-            The Trail · 90 Days · Apr 28 → Jul 25, 2026
-          </div>
+            DO Dashboard
+          </h1>
         </div>
-        <h1 style={{
-          fontSize: "clamp(32px, 6vw, 52px)",
-          fontWeight: 600,
-          margin: "0 0 12px",
-          lineHeight: 1.05,
-          letterSpacing: "-0.5px",
-          color: PALETTE.trailDeep,
-          fontFamily: "'Iowan Old Style', 'Palatino', Georgia, serif",
+        <div style={{
+          fontSize: "11px", letterSpacing: "3px", color: PALETTE.trail,
+          textTransform: "uppercase", fontFamily: "monospace", fontWeight: 600,
+          marginBottom: "16px",
         }}>
-          The Becoming
-        </h1>
+          90 Days · Apr 28 → Jul 25, 2026
+        </div>
         <p style={{
           color: PALETTE.inkSoft, fontSize: "15px", margin: "0 0 24px",
           maxWidth: "600px", lineHeight: 1.5, fontStyle: "italic",
@@ -1066,6 +1101,61 @@ function BusinessTrack({ viewWeek, setViewWeek, currentWeek, completedTasks, tog
         </div>
       </div>
 
+      <SectionLabel text="Cycle Win Condition" />
+      <div style={{
+        background: PALETTE.card,
+        border: `1px solid ${PALETTE.border}`,
+        borderRadius: "8px",
+        padding: "20px",
+        marginBottom: "32px",
+      }}>
+        <div style={{ fontSize: "13px", color: PALETTE.inkSoft, fontStyle: "italic", lineHeight: 1.6, marginBottom: "16px" }}>
+          By end of July, the system that produces revenue exists — not just the foundation that will.
+        </div>
+        {[
+          "Foundation docs used on at least one new client conversation",
+          "Website live and bringing in at least one inbound conversation",
+          "Three testimonials in hand and doing reputation work",
+          "One new piece of paid work generated through the new system",
+        ].map((task, i, arr) => {
+          const id = `cycle-win-${i}`;
+          const done = completedTasks[id];
+          return (
+            <div
+              key={id}
+              onClick={() => toggleTask(id)}
+              style={{
+                display: "flex", alignItems: "flex-start", gap: "12px",
+                padding: "10px 0",
+                borderBottom: i < arr.length - 1 ? `1px solid ${PALETTE.borderSoft}` : "none",
+                cursor: "pointer",
+              }}
+            >
+              <div style={{
+                width: "18px", height: "18px", borderRadius: "4px",
+                border: `1.5px solid ${done ? PALETTE.ok : PALETTE.border}`,
+                background: done ? PALETTE.ok : "transparent",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0, marginTop: "2px",
+              }}>
+                {done && <Check size={12} color={PALETTE.card} strokeWidth={3} />}
+              </div>
+              <div style={{
+                fontSize: "14px",
+                color: done ? PALETTE.inkFaint : PALETTE.ink,
+                textDecoration: done ? "line-through" : "none",
+                lineHeight: 1.5,
+              }}>
+                {task}
+              </div>
+            </div>
+          );
+        })}
+        <div style={{ fontSize: "12px", color: PALETTE.inkMuted, fontStyle: "italic", lineHeight: 1.5, marginTop: "14px", paddingTop: "14px", borderTop: `1px solid ${PALETTE.borderSoft}` }}>
+          Dollar amount is beside the point. The win is that the system produces revenue.
+        </div>
+      </div>
+
       <SectionLabel text="Week-by-Week Tasks" />
       <WeekPicker viewWeek={viewWeek} setViewWeek={setViewWeek} currentWeek={currentWeek} />
       <div style={{ marginBottom: "12px", fontSize: "13px", color: PALETTE.inkMuted, fontStyle: "italic" }}>
@@ -1341,15 +1431,15 @@ function WeightChart({ weights }) {
 // BUDGET TRACK
 // ============================================================
 
-function BudgetTrack({ completedTasks, toggleTask }) {
+function BudgetTrack({ completedTasks, toggleTask, resourceUrls, saveResourceUrl }) {
   return (
     <div>
       <SectionLabel text="Money — Hapag-Only Baseline" />
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px", marginBottom: "24px" }}>
         <StatBox label="Take-Home" value="$3,783" hint="Hapag-Lloyd · monthly" />
-        <StatBox label="Margin (now)" value="$1,791" hint="After fixed + subs + debt + savings" accent={PALETTE.ok} />
-        <StatBox label="Post-Forbearance" value="-$156" hint="If SoFi resumes at $1,250" accent={PALETTE.warn} />
+        <StatBox label="Margin Today" value="$652" hint="Flexible spending. Whataburger, Target runs, life." accent={PALETTE.ok} />
+        <StatBox label="Stable State" value="$371" hint="June 2026 onward. Post-forbearance, post-Five Lakes." />
       </div>
 
       <SectionLabel text="Tripwires & Deadlines" />
@@ -1437,6 +1527,85 @@ function BudgetTrack({ completedTasks, toggleTask }) {
         })}
       </div>
 
+      <SectionLabel text="Bridge Plan" />
+
+      <div style={{
+        background: PALETTE.bgAlt,
+        border: `1px solid ${PALETTE.border}`,
+        borderRadius: "8px",
+        padding: "20px 24px",
+        marginBottom: "16px",
+      }}>
+        <div style={{ fontSize: "10px", letterSpacing: "3px", color: PALETTE.trail, textTransform: "uppercase", fontFamily: "monospace", fontWeight: 700, marginBottom: "14px" }}>
+          The Actual Cliff
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "12px", marginBottom: "14px" }}>
+          {[
+            { label: "Today", value: "$652", hint: "flexible margin" },
+            { label: "Post-Forbearance", value: "$127", hint: "June only" },
+            { label: "Post-Five Lakes", value: "$896", hint: "May–June" },
+            { label: "Stable State", value: "$371", hint: "June onward" },
+          ].map((item, i) => (
+            <div key={i}>
+              <div style={{ fontSize: "10px", letterSpacing: "2px", color: PALETTE.inkMuted, textTransform: "uppercase", fontFamily: "monospace", fontWeight: 600, marginBottom: "6px" }}>
+                {item.label}
+              </div>
+              <div style={{ fontSize: "22px", color: PALETTE.trailDeep, fontFamily: "monospace", fontWeight: 700, lineHeight: 1 }}>
+                {item.value}
+              </div>
+              <div style={{ fontSize: "10px", color: PALETTE.inkMuted, textTransform: "uppercase", fontFamily: "monospace", marginTop: "4px", letterSpacing: "1px" }}>
+                {item.hint}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ fontSize: "13px", color: PALETTE.inkSoft, fontStyle: "italic", lineHeight: 1.6 }}>
+          Tight, not catastrophic. The post-forbearance state is positive but thin. The bridge moves below protect a comfortable margin — they don't bridge a deficit.
+        </div>
+      </div>
+
+      <div style={{ background: PALETTE.card, border: `1px solid ${PALETTE.border}`, borderRadius: "8px", padding: "20px", marginBottom: "32px" }}>
+        {[
+          "Track dog-sitting income deliberately ($150–300/mo reliable, summer ramp likely)",
+          "Send the BSD transfer email this week (in writing, specific ask)",
+          "Light expense audit ($20–50/mo cuts compound permanently — lift stable margin from $371 toward $400+)",
+          "Track real numbers monthly going forward (Hapag + dog-sitting + DO Code Lab + real margin)",
+        ].map((task, i, arr) => {
+          const id = `bridge-move-${i}`;
+          const done = completedTasks[id];
+          return (
+            <div
+              key={id}
+              onClick={() => toggleTask(id)}
+              style={{
+                display: "flex", alignItems: "flex-start", gap: "12px",
+                padding: "10px 0",
+                borderBottom: i < arr.length - 1 ? `1px solid ${PALETTE.borderSoft}` : "none",
+                cursor: "pointer",
+              }}
+            >
+              <div style={{
+                width: "18px", height: "18px", borderRadius: "4px",
+                border: `1.5px solid ${done ? PALETTE.ok : PALETTE.border}`,
+                background: done ? PALETTE.ok : "transparent",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0, marginTop: "2px",
+              }}>
+                {done && <Check size={12} color={PALETTE.card} strokeWidth={3} />}
+              </div>
+              <div style={{
+                fontSize: "14px",
+                color: done ? PALETTE.inkFaint : PALETTE.ink,
+                textDecoration: done ? "line-through" : "none",
+                lineHeight: 1.5,
+              }}>
+                {task}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
       <div style={{
         background: PALETTE.bgAlt,
         border: `1px solid ${PALETTE.border}`,
@@ -1462,6 +1631,141 @@ function BudgetTrack({ completedTasks, toggleTask }) {
         <div style={{ fontSize: "12px", color: PALETTE.inkSoft, marginTop: "14px", lineHeight: 1.6, fontStyle: "italic" }}>
           For DO Code Lab + Family Zelles. Not for Hapag take-home — that's already allocated.
         </div>
+      </div>
+
+      <SectionLabel text="Resources" />
+      <div style={{
+        background: PALETTE.card,
+        border: `1px solid ${PALETTE.border}`,
+        borderRadius: "8px",
+        padding: "20px",
+      }}>
+        {RESOURCES.map((resource) => (
+          <ResourceRow
+            key={resource.id}
+            resource={resource}
+            url={resourceUrls[resource.storageKey] || ""}
+            onSave={saveResourceUrl}
+          />
+        ))}
+        <div style={{ fontSize: "12px", color: PALETTE.inkMuted, fontStyle: "italic", marginTop: "12px", paddingTop: "12px", borderTop: `1px solid ${PALETTE.borderSoft}` }}>
+          The dashboard is the summary. The source files are the truth.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ResourceRow({ resource, url, onSave }) {
+  const Icon = resource.icon;
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(url || "");
+  const [error, setError] = useState("");
+  const [hovered, setHovered] = useState(false);
+  const inputRef = useRef(null);
+
+  useEffect(() => { setDraft(url || ""); }, [url]);
+  useEffect(() => { if (editing && inputRef.current) inputRef.current.focus(); }, [editing]);
+
+  const handleRowClick = () => {
+    if (url) {
+      window.open(url, "_blank", "noopener,noreferrer");
+    } else {
+      setEditing(true);
+    }
+  };
+
+  const handleSave = () => {
+    const trimmed = draft.trim();
+    if (!trimmed) { setError("URL cannot be empty."); return; }
+    if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
+      setError("URL must start with http:// or https://");
+      return;
+    }
+    setError("");
+    onSave(resource.storageKey, trimmed);
+    setEditing(false);
+  };
+
+  const handleCancel = () => {
+    setDraft(url || "");
+    setError("");
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div style={{ padding: "12px 0" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+          <Icon size={16} color={PALETTE.trail} />
+          <div style={{ fontSize: "14px", color: PALETTE.ink, fontWeight: 600 }}>{resource.title}</div>
+        </div>
+        <input
+          ref={inputRef}
+          value={draft}
+          onChange={(e) => { setDraft(e.target.value); setError(""); }}
+          onKeyDown={(e) => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") handleCancel(); }}
+          placeholder="Paste Google Drive share link…"
+          style={{
+            width: "100%",
+            border: `1px solid ${PALETTE.trail}`,
+            borderRadius: "6px",
+            padding: "8px 10px",
+            fontFamily: "monospace",
+            fontSize: "12px",
+            color: PALETTE.ink,
+            background: PALETTE.bg,
+            outline: "none",
+            boxSizing: "border-box",
+          }}
+        />
+        {error && <div style={{ fontSize: "11px", color: PALETTE.warn, marginTop: "4px" }}>{error}</div>}
+        <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+          <button onClick={handleSave} style={miniBtn(PALETTE.trail, PALETTE.card)}>Save</button>
+          <button onClick={handleCancel} style={miniBtn(PALETTE.card, PALETTE.inkMuted, true)}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "12px",
+        padding: "12px 8px",
+        borderRadius: "6px",
+        background: hovered ? PALETTE.bgAlt : "transparent",
+        cursor: "pointer",
+        transition: "background 0.15s",
+      }}
+      onClick={handleRowClick}
+    >
+      <Icon size={16} color={PALETTE.trail} style={{ flexShrink: 0 }} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: "14px", color: PALETTE.ink, fontWeight: 600, marginBottom: "2px" }}>{resource.title}</div>
+        <div style={{ fontSize: "12px", color: PALETTE.inkSoft, fontStyle: "italic" }}>{resource.description}</div>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+        {url && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setDraft(url); setError(""); setEditing(true); }}
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              padding: "4px", display: "flex", alignItems: "center",
+            }}
+            title="Edit URL"
+          >
+            <Edit2 size={13} color={PALETTE.inkMuted} />
+          </button>
+        )}
+        {url
+          ? <ExternalLink size={14} color={PALETTE.inkMuted} />
+          : <div style={{ fontSize: "10px", color: PALETTE.inkFaint, fontFamily: "monospace", letterSpacing: "1px" }}>CLICK TO ADD</div>
+        }
       </div>
     </div>
   );
@@ -1709,7 +2013,7 @@ function CompassTab({ customNotes, saveNotes, foundationVerse, saveFoundationVer
   useEffect(() => { setVerseDraft(foundationVerse); }, [foundationVerse]);
 
   useEffect(() => {
-    const EXPORT_KEYS = ["completedTasks", "customTasks", "weights", "notes", "foundationVerse", "presenceDays", "carryingNotes", "cycleDecisions"];
+    const EXPORT_KEYS = ["completedTasks", "customTasks", "weights", "notes", "foundationVerse", "presenceDays", "carryingNotes", "cycleDecisions", "resourceUrl_budgetPlan"];
     (async () => {
       let count = 0;
       let totalBytes = 0;
@@ -1722,7 +2026,7 @@ function CompassTab({ customNotes, saveNotes, foundationVerse, saveFoundationVer
   }, []);
 
   const handleExport = async () => {
-    const EXPORT_KEYS = ["completedTasks", "customTasks", "weights", "notes", "foundationVerse", "presenceDays", "carryingNotes", "cycleDecisions"];
+    const EXPORT_KEYS = ["completedTasks", "customTasks", "weights", "notes", "foundationVerse", "presenceDays", "carryingNotes", "cycleDecisions", "resourceUrl_budgetPlan"];
     const data = {};
     for (const key of EXPORT_KEYS) {
       const r = await window.storage.get(key);

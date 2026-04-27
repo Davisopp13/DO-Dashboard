@@ -6,6 +6,7 @@ import Dashboard from "../Dashboard.jsx";
 const STORAGE_KEYS = [
   "completedTasks", "customTasks", "weights", "notes",
   "foundationVerse", "presenceDays", "carryingNotes", "cycleDecisions",
+  "resourceUrl_budgetPlan",
 ];
 
 window.storage = {
