@@ -473,13 +473,13 @@ function Header({ currentWeek }) {
     }}>
       <MountainBackdrop height={140} opacity={1} />
       <div style={{ maxWidth: "1100px", margin: "0 auto", position: "relative", zIndex: 1 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "10px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
           <img
             src="/icon-192.png"
-            alt="DO Dashboard"
+            alt="DO"
             style={{
-              width: "44px",
-              height: "44px",
+              width: "clamp(40px, 8vw, 56px)",
+              height: "clamp(40px, 8vw, 56px)",
               objectFit: "contain",
               flexShrink: 0,
             }}
@@ -493,7 +493,7 @@ function Header({ currentWeek }) {
             color: PALETTE.trailDeep,
             fontFamily: "'Iowan Old Style', 'Palatino', Georgia, serif",
           }}>
-            DO Dashboard
+            Dashboard
           </h1>
         </div>
         <div style={{
