@@ -478,8 +478,8 @@ function Header({ currentWeek }) {
             src="/icon-192.png"
             alt="DO"
             style={{
-              width: "clamp(30px, 5.5vw, 40px)",
-              height: "clamp(30px, 5.5vw, 40px)",
+              width: "80px",
+              height: "80px",
               marginBottom: "clamp(4px, 0.8vw, 8px)",
               objectFit: "contain",
               flexShrink: 0,
